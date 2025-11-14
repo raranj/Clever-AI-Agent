@@ -1,4 +1,4 @@
-name = "server-worker"
+name = "clever-mcp-server"
 main = "index.js"
 compatibility_date = "2024-03-04"
 
