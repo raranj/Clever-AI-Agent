@@ -1,7 +1,7 @@
-name = "cf-ai-agent"
+name = "clever-ai-agent"
 compatibility_date = "2024-03-04"
 pages_build_output_dir = "."
 
 [[services]]
 binding = "CLIENT_WORKER"
-service = "client-worker"
+service = "clever-mcp-client"

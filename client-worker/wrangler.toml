@@ -1,4 +1,4 @@
-name = "client-worker"
+name = "clever-mcp-client"
 main = "index.js"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
@@ -12,7 +12,7 @@ tag = "v1"
 new_classes = [ "MyAgent" ]
 
 [vars]
-MCP_SERVER_URL = "https://server-worker.raranj.workers.dev"
+MCP_SERVER_URL = "https://clever-mcp-server.raranj.workers.dev"
 
 [observability]
 enabled = false
