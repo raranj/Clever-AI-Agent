@@ -1,3 +1,25 @@
+async function fetchCleverAPI(path) {
+  const url = `https://api.clever.com/v3.0/${path}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer 2b907bfab3ac2c992a3b96d6aceef2d01fe817a5`,
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return { 
+      error: true, 
+      status: response.status, 
+      message: response.statusText, 
+      text: await response.text() 
+    };
+  }
+
+  return await response.json();
+}
+
 export default {
   async fetch(request, env, ctx) {
     return await handleRequest({ request, env, waitUntil: ctx.waitUntil });
@@ -54,7 +76,7 @@ async function handleRequest({ request, env, waitUntil }) {
           id,
           result: {
             protocolVersion: "2024-11-05",
-            serverInfo: { name: "DeviceMCP", version: "0.1.0" },
+            serverInfo: { name: "CleverMCP", version: "0.1.0" },
             capabilities: { tools: {} },
           },
         }),
@@ -75,15 +97,7 @@ async function handleRequest({ request, env, waitUntil }) {
             tools: [
               { name: "echo", description: "Echo input text", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { text: { type: "string" } }, required: ["text"] } },
               { name: "apps_on_device", description: "List apps on a device", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { device_id: { type: "string" } }, required: ["device_id"] } },
-              { name: "msoffice_versions", description: "Microsoft Office versions", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "slack_vs_teams", description: "Slack vs Teams", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "outdated_java_devices", description: "Devices with outdated Java", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "browser_updates", description: "Devices needing browser updates", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "unallowed_apps", description: "Devices with unallowed apps", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "unencrypted_devices", description: "Devices without encryption", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "no_autolock_devices", description: "Devices without auto-lock", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "os_distribution", description: "OS distribution", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
-              { name: "devices_needing_upgrade", description: "Count devices needing IS upgrade", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
+              { name: "get_clever_courses", description: "Fetch courses from Clever platform", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               {name: "add_numbers", description: "Add two numbers and return the sum.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { a: { type: "number", description: "The first number" }, b: { type: "number", description: "The second number" } }, required: ["a", "b"] } },
             ],
           },
@@ -121,6 +135,7 @@ async function handleRequest({ request, env, waitUntil }) {
         );
       }
 
+      // 
       if (name === "apps_on_device") {
 
         if (!args?.device_id) {
@@ -159,194 +174,81 @@ async function handleRequest({ request, env, waitUntil }) {
         );
       }
 
-      if (name === "msoffice_versions") {
-        const rows = await env.devices_db.prepare(`
-          SELECT da.device_id, da.app_version, da.last_update
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          WHERE a.name = 'Microsoft Office'
-        `).all();
+      if (name === "get_clever_courses") {
 
+        const apiResult = await fetchCleverAPI("courses"); 
+
+        if (apiResult.error) {
+            return new Response(
+                JSON.stringify({
+                    jsonrpc: "2.0",
+                    id,
+                    error: {
+                        code: -32000, // Custom Server Error code
+                        message: `Clever API Error ${apiResult.status}. Details: ${apiResult.message}`
+                    }
+                }),
+                { headers: { "Content-Type": "application/json" }, status: 500 }
+            );
+        }
+        
+        const courses = apiResult.data;
         let outputText;
-        if (rows.results.length === 0) {
-          outputText = "No devices with Microsoft Office found.";
+        let jsonContent = null;
+
+        if (!courses || courses.length === 0) {
+            outputText = "No courses were found on the Clever platform.";
         } else {
-          let table = "| Device ID | Version | Last Update |\n";
-          table +=    "|-----------|---------|-------------|\n";
-          rows.results.forEach(row => {
-            table += `| ${row.device_id} | ${row.app_version} | ${row.last_update} |\n`;
-          });
-          outputText = table;
+            const totalCourses = courses.length;
+            outputText = `Successfully retrieved ${totalCourses} courses. Showing top 5 for summary:\n\n`;
+            
+            let table = "| Course Name | Subject | Course ID |\n";
+            table +=    "|-------------|---------|-----------|\n";
+            courses.slice(0, 5).forEach(course => {
+              table += `| ${course.name} | ${course.subject} | ${course.id} |\n`;
+            });
+            outputText += table;
+            
+            jsonContent = courses[0];
+        }
+
+        const content = [{ type: "text", text: outputText }];
+        
+        if (jsonContent) {
+            content.push({ type: "json", text: JSON.stringify(jsonContent) });
         }
 
         return new Response(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: outputText }] }
-          }),
-          { headers: { "Content-Type": "application/json" } }
+            JSON.stringify({
+                jsonrpc: "2.0",
+                id,
+                result: { content: content }
+            }),
+            { headers: { "Content-Type": "application/json" } }
         );
       }
+    
 
-      if (name === "slack_vs_teams") {
-        const rows = await env.devices_db.prepare(`
-          SELECT a.name AS application,
-                  COUNT(DISTINCT da.device_id) AS devices_with_app,
-                  ROUND(100.0 * COUNT(DISTINCT da.device_id) / (SELECT COUNT(*) FROM devices), 2) AS percentage_of_devices
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          WHERE a.name IN ('Slack', 'Microsoft Teams')
-          GROUP BY a.name
-        `).all();
 
-        let outputText;
-        if (rows.results.length === 0) {
-          outputText = "No devices with Slack or Teams found.";
-        } else {
-          let table = "| Application     | Device Count | Percentage of Devices |\n";
-          table +=    "|-----------------|--------------|-----------------------|\n";
-          rows.results.forEach(row => {
-            table += `| ${row.application} | ${row.devices_with_app} | ${row.percentage_of_devices}% |\n`;
-          });
-          outputText = table;
-        }
 
-        return new Response(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: outputText }] }
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
 
-      if (name === "outdated_java_devices") {
-        const rows = await env.devices_db.prepare(`
-          SELECT d.device_id, da.app_version
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          JOIN devices d ON d.device_id = da.device_id
-          WHERE a.name = 'Java Runtime' AND da.needs_update = 1;
-        `).all();
 
-        let text = rows.results.length === 0
-          ? "No devices have outdated Java Runtime."
-          : "| Device ID | Java Version |\n|------------|----------------|\n" +
-            rows.results.map(r => `| ${r.device_id} | ${r.app_version} |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
 
-      if (name === "browser_updates") {
-        const rows = await env.devices_db.prepare(`
-          SELECT DISTINCT d.device_id, a.name AS browser_name, da.app_version
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          JOIN devices d ON d.device_id = da.device_id
-          WHERE a.category = 'Browser' AND da.needs_update = 1;
-        `).all();
 
-        let text = rows.results.length === 0
-          ? "All browsers are up to date."
-          : "| Device ID | Browser | Version |\n|------------|----------|----------|\n" +
-            rows.results.map(r => `| ${r.device_id} | ${r.browser_name} | ${r.app_version} |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
 
-      if (name === "unallowed_apps") {
-        const rows = await env.devices_db.prepare(`
-          SELECT DISTINCT d.device_id, a.name
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          JOIN devices d ON d.device_id = da.device_id
-          WHERE a.allowed = 0;
-        `).all();
 
-        let text = rows.results.length === 0
-          ? "No devices with unallowed apps."
-          : "| Device ID | Unallowed App |\n|------------|----------------|\n" +
-            rows.results.map(r => `| ${r.device_id} | ${r.name} |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
 
-      if (name === "unencrypted_devices") {
-        const rows = await env.devices_db.prepare(`
-          SELECT device_id, hostname, username, department
-          FROM devices
-          WHERE is_encrypted = 0;
-        `).all();
 
-        let text = rows.results.length === 0
-          ? "All devices are encrypted."
-          : "| Device ID | Hostname | User | Department |\n|------------|-----------|-------|-------------|\n" +
-            rows.results.map(r => `| ${r.device_id} | ${r.hostname} | ${r.username} | ${r.department} |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
 
-      if (name === "no_autolock_devices") {
-        const rows = await env.devices_db.prepare(`
-          SELECT device_id, hostname, username, department
-          FROM devices
-          WHERE auto_lock_enabled = 0;
-        `).all();
 
-        let text = rows.results.length === 0
-          ? "All devices have auto-lock enabled."
-          : "| Device ID | Hostname | User | Department |\n|------------|-----------|-------|-------------|\n" +
-            rows.results.map(r => `| ${r.device_id} | ${r.hostname} | ${r.username} | ${r.department} |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
 
-      if (name === "os_distribution") {
-        const total = (await env.devices_db.prepare(`SELECT COUNT(*) AS count FROM devices;`).all()).results[0].count;
-        const rows = await env.devices_db.prepare(`
-          SELECT os, COUNT(*) * 100.0 / ? AS percentage
-          FROM devices
-          GROUP BY os;
-        `).bind(total).all();
 
-        let text = "| OS | Percentage |\n|----|-------------|\n" +
-          rows.results.map(r => `| ${r.os} | ${r.percentage.toFixed(1)}% |`).join("\n");
 
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
-
-      if (name === "devices_needing_upgrade") {
-        const count = (await env.devices_db.prepare(`
-          SELECT COUNT(*) AS count FROM devices WHERE needs_is_upgrade = 1;
-        `).all()).results[0].count;
-
-        const text = `${count} devices need an IS upgrade.`;
-
-        return new Response(JSON.stringify({
-          jsonrpc: "2.0", id,
-          result: { content: [{ type: "text", text }] }
-        }), { headers: { "Content-Type": "application/json" } });
-      }
     }
 
     return new Response(
