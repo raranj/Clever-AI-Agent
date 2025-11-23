@@ -184,7 +184,7 @@ async function handleRequest({ request, env, waitUntil }) {
                     jsonrpc: "2.0",
                     id,
                     error: {
-                        code: -32000, // Custom Server Error code
+                        code: -32000, 
                         message: `Clever API Error ${apiResult.status}. Details: ${apiResult.message}`
                     }
                 }),
@@ -204,12 +204,14 @@ async function handleRequest({ request, env, waitUntil }) {
             
             let table = "| Course Name | Subject | Course ID |\n";
             table +=    "|-------------|---------|-----------|\n";
-            courses.slice(0, 5).forEach(course => {
-              table += `| ${course.name} | ${course.subject} | ${course.id} |\n`;
+            courses.slice(0, 5).forEach(item => {
+              const courseData = item.data;
+
+              table += `| ${courseData.name} | ${courseData.number} | ${courseData.id} |\n`;
             });
             outputText += table;
             
-            jsonContent = courses[0];
+            jsonContent = courses[0].data;
         }
 
         const content = [{ type: "text", text: outputText }];
