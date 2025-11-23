@@ -3,7 +3,7 @@
   "type": "module",
   "dependencies": {
     "@cloudflare/agents": "latest",
-    "agents": "^0.2.13"
+    "agents": "^0.2.23"
   },
   "scripts": {
     "build": "echo 'no build needed'"

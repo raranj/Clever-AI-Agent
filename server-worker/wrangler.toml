@@ -3,11 +3,9 @@ main = "index.js"
 compatibility_date = "2024-03-04"
 
 [vars]
-# You can use a specific version like v3.1
-CLEVER_API_BASE = "https://api.clever.com/v3.1" 
+CLEVER_API_BASE = "https://api.clever.com" 
 
 [secrets]
-# Placeholder for the actual secret binding
 CLEVER_API_TOKEN = ""
 
 [observability]
