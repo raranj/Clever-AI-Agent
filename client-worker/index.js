@@ -86,16 +86,3 @@ export default {
     return stub.fetch(req.clone());
   },
 };
-
-
-
-
-
-
-
-
-
-
-
-
-

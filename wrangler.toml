@@ -4,4 +4,4 @@ pages_build_output_dir = "."
 
 [[services]]
 binding = "CLIENT_WORKER"
-service = "clever-mcp-client"
+service = "client-worker"

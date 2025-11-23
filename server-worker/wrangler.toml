@@ -1,12 +1,11 @@
-name = "clever-mcp-server"
+name = "server-worker"
 main = "index.js"
 compatibility_date = "2024-03-04"
 
-[vars]
-CLEVER_API_BASE = "https://api.clever.com" 
-
-[secrets]
-CLEVER_API_TOKEN = ""
+[[d1_databases]]
+binding = "devices_db"
+database_name = "devices_db"
+database_id = "892e0fbf-65f1-4701-b16f-6d9194a32400"
 
 [observability]
 enabled = false
@@ -15,4 +14,3 @@ enabled = false
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
-
