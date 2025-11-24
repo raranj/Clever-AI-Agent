@@ -99,6 +99,7 @@ async function handleRequest({ request, env, waitUntil }) {
               { name: "apps_on_device", description: "List apps on a device", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { device_id: { type: "string" } }, required: ["device_id"] } },
               { name: "get_clever_courses", description: "Fetch courses with name, number, and id", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               { name: "get_clever_schools", description: "Fetch schools with name, grades, city, and id", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
+              { name: "get_clever_sections", description: "Fetch a list of sections including name, subject, grade, and student count.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               {name: "add_numbers", description: "Add two numbers and return the sum.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { a: { type: "number", description: "The first number" }, b: { type: "number", description: "The second number" } }, required: ["a", "b"] } },
             ],
           },
@@ -187,6 +188,7 @@ async function handleRequest({ request, env, waitUntil }) {
         );
       }
 
+
       if (name === "get_clever_schools") {
 
         const apiResult = await fetchCleverAPI("schools"); 
@@ -244,6 +246,77 @@ async function handleRequest({ request, env, waitUntil }) {
           { headers: { "Content-Type": "application/json" } }
         );
       }
+
+      if (name === "get_clever_sections") {
+
+        const apiResult = await fetchCleverAPI("sections"); 
+
+        if (apiResult.error) {
+            return new Response(
+                JSON.stringify({
+                    jsonrpc: "2.0",
+                    id,
+                    error: {
+                        code: -32000, 
+                        message: `Clever API Error ${apiResult.status}. Details: ${apiResult.message}`
+                    }
+                }),
+                { headers: { "Content-Type": "application/json" }, status: 500 }
+            );
+        }
+        
+        const sections = apiResult.data;
+        let outputText;
+        let jsonContent = null;
+
+        if (!sections || sections.length === 0) {
+            outputText = "No sections were found on the Clever platform.";
+        } else {
+            const totalSections = sections.length;
+            outputText = `Successfully retrieved ${totalSections} sections. Showing top 5 for summary:\n\n`;
+            
+            let table = "| Section Name | Subject | Grade | Student Count | Section ID |\n";
+            table +=    "|--------------|---------|-------|---------------|------------|\n";
+            
+            sections.slice(0, 5).forEach(item => {
+              const sectionData = item.data;
+              
+              const studentCount = sectionData.students?.length ?? 0;
+              const grade = sectionData.grade ?? 'N/A';
+              const subject = sectionData.subject ?? 'N/A';
+
+              table += `| ${sectionData.name} | ${subject} | ${grade} | ${studentCount} | ${sectionData.id} |\n`;
+            });
+            outputText += table;
+            
+            jsonContent = sections[0].data;
+            console.log("Sample section data:", jsonContent);
+        }
+
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: outputText }] }
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
     
 
