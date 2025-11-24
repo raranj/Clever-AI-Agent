@@ -212,22 +212,32 @@ async function handleRequest({ request, env, waitUntil }) {
             outputText += table;
             
             jsonContent = courses[0].data;
-        }
-
-        const content = [{ type: "text", text: outputText }];
-        
-        if (jsonContent) {
-            content.push({ type: "json", text: JSON.stringify(jsonContent) });
+            console.log("Sample course data:", jsonContent);
         }
 
         return new Response(
-            JSON.stringify({
-                jsonrpc: "2.0",
-                id,
-                result: { content: content }
-            }),
-            { headers: { "Content-Type": "application/json" } }
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: outputText }] }
+          }),
+          { headers: { "Content-Type": "application/json" } }
         );
+
+        // const content = [{ type: "text", text: outputText }];
+        
+        // if (jsonContent) {
+        //     content.push({ type: "json", text: JSON.stringify(jsonContent) });
+        // }
+
+        // return new Response(
+        //     JSON.stringify({
+        //         jsonrpc: "2.0",
+        //         id,
+        //         result: { content: content }
+        //     }),
+        //     { headers: { "Content-Type": "application/json" } }
+        // );
       }
     
 
