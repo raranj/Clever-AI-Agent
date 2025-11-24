@@ -97,7 +97,7 @@ async function handleRequest({ request, env, waitUntil }) {
             tools: [
               { name: "echo", description: "Echo input text", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { text: { type: "string" } }, required: ["text"] } },
               { name: "apps_on_device", description: "List apps on a device", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { device_id: { type: "string" } }, required: ["device_id"] } },
-              { name: "get_clever_courses", description: "Fetch courses", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
+              { name: "get_clever_courses", description: "Fetch courses with name, number, and id", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               {name: "add_numbers", description: "Add two numbers and return the sum.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { a: { type: "number", description: "The first number" }, b: { type: "number", description: "The second number" } }, required: ["a", "b"] } },
             ],
           },
@@ -223,21 +223,6 @@ async function handleRequest({ request, env, waitUntil }) {
           }),
           { headers: { "Content-Type": "application/json" } }
         );
-
-        // const content = [{ type: "text", text: outputText }];
-        
-        // if (jsonContent) {
-        //     content.push({ type: "json", text: JSON.stringify(jsonContent) });
-        // }
-
-        // return new Response(
-        //     JSON.stringify({
-        //         jsonrpc: "2.0",
-        //         id,
-        //         result: { content: content }
-        //     }),
-        //     { headers: { "Content-Type": "application/json" } }
-        // );
       }
     
 
