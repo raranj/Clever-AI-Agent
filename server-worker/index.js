@@ -97,7 +97,7 @@ async function handleRequest({ request, env, waitUntil }) {
             tools: [
               { name: "echo", description: "Echo input text", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { text: { type: "string" } }, required: ["text"] } },
               { name: "apps_on_device", description: "List apps on a device", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { device_id: { type: "string" } }, required: ["device_id"] } },
-              { name: "get_clever_courses", description: "Fetch courses from Clever platform", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
+              { name: "get_clever_courses", description: "Fetch courses", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               {name: "add_numbers", description: "Add two numbers and return the sum.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { a: { type: "number", description: "The first number" }, b: { type: "number", description: "The second number" } }, required: ["a", "b"] } },
             ],
           },
