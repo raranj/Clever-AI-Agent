@@ -98,6 +98,7 @@ async function handleRequest({ request, env, waitUntil }) {
               { name: "echo", description: "Echo input text", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { text: { type: "string" } }, required: ["text"] } },
               { name: "apps_on_device", description: "List apps on a device", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { device_id: { type: "string" } }, required: ["device_id"] } },
               { name: "get_clever_courses", description: "Fetch courses with name, number, and id", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
+              { name: "get_clever_schools", description: "Fetch schools with name, grades, city, and id", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: {}, required: [] } },
               {name: "add_numbers", description: "Add two numbers and return the sum.", inputSchema: { "$schema": "http://json-schema.org/draft-07/schema#", type: "object", properties: { a: { type: "number", description: "The first number" }, b: { type: "number", description: "The second number" } }, required: ["a", "b"] } },
             ],
           },
@@ -130,45 +131,6 @@ async function handleRequest({ request, env, waitUntil }) {
             jsonrpc: "2.0",
             id,
             result: { content: [{ type: "text", text: args.text }] }
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      // 
-      if (name === "apps_on_device") {
-
-        if (!args?.device_id) {
-          return new Response(
-            JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32602, message: "Missing device_id" } }),
-            { headers: { "Content-Type": "application/json" }, status: 400 }
-          );
-        }
-        
-        const rows = await env.devices_db.prepare(`
-          SELECT a.name AS application_name, a.vendor, da.app_version, da.install_date, da.last_update, da.needs_update
-          FROM device_apps da
-          JOIN applications a ON da.app_id = a.app_id
-          WHERE da.device_id = ?
-        `).bind(args.device_id).all();
-
-        let outputText;
-        if (rows.results.length === 0) {
-          outputText = `No applications found for device ${args.device_id}.`;
-        } else {
-          let table = "| Application        | Version    | Vendor              | Needs Update |\n";
-          table +=    "|--------------------|------------|---------------------|--------------|\n";
-          rows.results.forEach(app => {
-            table += `| ${app.application_name} | ${app.app_version} | ${app.vendor} | ${app.needs_update ? 'Yes' : 'No'} |\n`;
-          });
-          outputText = table;
-        }
-
-        return new Response(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: outputText }] }
           }),
           { headers: { "Content-Type": "application/json" } }
         );
@@ -224,6 +186,65 @@ async function handleRequest({ request, env, waitUntil }) {
           { headers: { "Content-Type": "application/json" } }
         );
       }
+
+      if (name === "get_clever_schools") {
+
+        const apiResult = await fetchCleverAPI("schools"); 
+
+        if (apiResult.error) {
+            return new Response(
+                JSON.stringify({
+                    jsonrpc: "2.0",
+                    id,
+                    error: {
+                        code: -32000, 
+                        message: `Clever API Error ${apiResult.status}. Details: ${apiResult.message}`
+                    }
+                }),
+                { headers: { "Content-Type": "application/json" }, status: 500 }
+            );
+        }
+        
+        const schools = apiResult.data;
+        let outputText;
+        let jsonContent = null;
+
+        if (!schools || schools.length === 0) {
+            outputText = "No schools were found on the Clever platform.";
+        } else {
+            const totalSchools = schools.length;
+            outputText = `Successfully retrieved ${totalSchools} schools. Showing top 5 for summary:\n\n`;
+            
+            // Generate a nicely formatted Markdown table
+            let table = "| School Name | Grades | City | School ID |\n";
+            table +=    "|-------------|--------|------|-----------|\n";
+            
+            schools.slice(0, 5).forEach(item => {
+              const schoolData = item.data;
+              
+              const grades = (schoolData.low_grade && schoolData.high_grade) 
+                ? `${schoolData.low_grade}-${schoolData.high_grade}` 
+                : 'N/A';
+              const city = schoolData.location?.city ?? 'N/A';
+
+              table += `| ${schoolData.name} | ${grades} | ${city} | ${schoolData.id} |\n`;
+            });
+            outputText += table;
+            
+            jsonContent = schools[0].data;
+            console.log("Sample school data:", jsonContent);
+        }
+
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: outputText }] }
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
     
 
 
@@ -246,7 +267,7 @@ async function handleRequest({ request, env, waitUntil }) {
 
 
 
-    }
+
 
     return new Response(
       JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } }),
